@@ -1,4 +1,5 @@
 const Order = require("../models/Order");
+const midtransClient = require("midtrans-client");
 
 // GET ALL
 const getOrders = async (req, res) => {
@@ -53,7 +54,6 @@ const createOrder = async (req, res) => {
       totalPrice: req.body.totalPrice,
       orderItem: req.body.orderItem,
       note: req.body.note,
-
     });
     const order = await data.save();
     res.status(201).json({
@@ -64,8 +64,6 @@ const createOrder = async (req, res) => {
     res.status(400).json({ message: error });
   }
 };
-
-
 
 // DELETE
 const deleteOrder = async (req, res) => {
@@ -79,9 +77,38 @@ const deleteOrder = async (req, res) => {
   }
 };
 
+// GET MIDTRANS
+const getMidtrans = async (req, res) => {
+  // Get Order
+  const order = await Order.findById({ _id: req.params.id });
+
+  // Create Snap API instance
+  let snap = new midtransClient.Snap({
+    isProduction: false,
+    serverKey: "SB-Mid-server-CXazCvDS8ICzN6bALgs9tCEg",
+    clientKey: "SB-Mid-client-BvFb3TRROqvbGzFf",
+  });
+  let parameter = {
+    transaction_details: {
+      order_id: order._id,
+      gross_amount: order.totalPrice,
+    },
+    credit_card: {
+      secure: true,
+    },
+  };
+  snap.createTransaction(parameter)
+    .then((transaction)=>{
+        // transaction redirect_url
+        let redirectUrl = transaction.redirect_url;
+        res.status(200).json(redirectUrl)
+    })
+};
+
 module.exports = {
   getOrders,
   getOrderById,
   createOrder,
   deleteOrder,
+  getMidtrans
 };
